@@ -1,0 +1,68 @@
+Technical Architecture: SportsX Confidential Ad-Network (SCAN)
+
+1. Vision
+
+SportsX SCAN is a privacy-first advertising protocol that bridges the gap between sports clubs, fans, and sponsors. By leveraging Fully Homomorphic Encryption (FHE) via Fhenix, we enable sponsors to target specific fan segments (based on spending, loyalty, and behavior) without ever accessing the raw, sensitive data of the individuals.
+
+2. The Core Problem
+
+Centralized Risk: Traditional ad networks require clubs to hand over fan data to third parties, risking privacy leaks.
+
+Transparent Blockchain Limits: On-chain data is usually public. If a fan’s loyalty or spending is on-chain, anyone can "dox" their financial status.
+
+The Stalemate: Sponsors want precision; fans want privacy; clubs want compliance.
+
+3. Technical Stack
+
+Encryption Layer: @cofhe/sdk (Client-side encryption for fan data).
+
+Execution Layer: Fhenix (EVM-compatible FHE Rollup).
+
+Application Layer: SportsX SaaS (The source of validated fan metrics).
+
+Incentive Layer: $SPX Token / Automated Smart Contract Payouts.
+
+4. System Architecture & Data Flow
+
+A. Data Ingestion & Local Encryption
+
+Metric Collection: The SportsX SaaS platform calculates fan metrics (e.g., total spend, match attendance, years of membership).
+
+Client-Side Encryption: Before the data touches the blockchain, the SportsX client uses the Fhenix public key to encrypt these metrics into Ciphertexts (e.g., euint32).
+
+On-chain Vault: The encrypted values are stored in a ConfidentialFanProfile contract on Fhenix. Only the fan (owner) has the permission to view the unencrypted state.
+
+B. The FHE Matching Engine (Blind Targeting)
+
+Campaign Creation: A sponsor (e.g., a sports brand) initiates a campaign with specific criteria:
+
+Target: Spend > 500 $USDC AND Attendance > 5 matches.
+
+Encrypted Logic Execution: The Fhenix smart contract runs a "Blind Match" using the FHE.sol library:
+
+MatchResult=FHE.and(FHE.gt(UserSpend,500),FHE.gt(UserAttendance,5))
+Encrypted Bit: The result is an encrypted boolean. No one, including the sponsor or the network validator, knows who matched.
+
+C. Permissioned Disclosure & Incentivization
+
+Selective Disclosure: If a match is found, the contract utilizes the Fhenix Permission system to trigger an action.
+
+Automated Rewards: The contract can automatically distribute a "Claim Ticket" or $SPX tokens to the user’s wallet.
+
+Proof of Impact: The sponsor receives a count of "Successful Matches" (e.g., "500 fans reached") to justify their ad spend, without receiving the wallet addresses or identities of those fans.
+
+5. Competitive Advantages for the Buildathon
+
+Privacy-by-Design: Data is "Useful but Invisible." We solve the GDPR/PIPEDA compliance hurdle for sports clubs globally.
+
+Computational Superiority: Unlike Zero-Knowledge Proofs (ZKP), which only prove a statement, our FHE approach allows sponsors to perform complex, weighted scoring on fan data without seeing it.
+
+Sybil Resistance: Because the data is anchored to the SportsX SaaS infrastructure, the encrypted profiles represent real-world fans, not bot accounts.
+
+6. Demo Scope (MVP)
+
+User Portal: A simple interface for fans to "Sync & Encrypt" their club data.
+
+Sponsor Dashboard: A UI to set targeting thresholds and deposit $SPX/USDC rewards.
+
+Smart Contract: A Solidity contract demonstrating the FHE.gt and FHE.and operations on encrypted user traits.
