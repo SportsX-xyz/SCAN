@@ -1,0 +1,407 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_fanProfiles",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int32",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "name": "SecurityZoneOutOfBounds",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "BlindMatchExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "CampaignCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "CampaignDeactivated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "RewardClaimed",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address[]",
+        "name": "fans",
+        "type": "address[]"
+      }
+    ],
+    "name": "batchBlindMatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "blindMatch",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "campaigns",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "euint32",
+        "name": "minSpend",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint32",
+        "name": "minAttendance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint32",
+        "name": "minLoyalty",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rewardPerFan",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalBudget",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "remainingBudget",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "matchCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "claimReward",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint32",
+        "name": "minSpendPlain",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "minAttendancePlain",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "minLoyaltyPlain",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rewardPerFan",
+        "type": "uint256"
+      }
+    ],
+    "name": "createCampaign",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "deactivateCampaign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fanProfiles",
+    "outputs": [
+      {
+        "internalType": "contract ConfidentialFanProfile",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCampaignStats",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rewardPerFan",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalBudget",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "remainingBudget",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "matchCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "matchComputed",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextCampaignId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      }
+    ],
+    "name": "requestMatchResult",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "rewardClaimed",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

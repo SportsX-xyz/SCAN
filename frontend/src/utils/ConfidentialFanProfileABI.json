@@ -1,0 +1,398 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "got",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "expected",
+        "type": "uint8"
+      }
+    ],
+    "name": "InvalidEncryptedInput",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "ProfileRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "ProfileUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "admin",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "fans",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address",
+        "name": "campaign",
+        "type": "address"
+      }
+    ],
+    "name": "batchGrantCampaignAccess",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "fanList",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getFanAt",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getFanCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "getProfile",
+    "outputs": [
+      {
+        "internalType": "euint32",
+        "name": "totalSpend",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint32",
+        "name": "matchAttendance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint32",
+        "name": "loyaltyYears",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "campaign",
+        "type": "address"
+      }
+    ],
+    "name": "grantCampaignAccess",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "hasProfile",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "spend",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "attendance",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "loyalty",
+        "type": "tuple"
+      }
+    ],
+    "name": "registerProfile",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newAdmin",
+        "type": "address"
+      }
+    ],
+    "name": "transferAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "spend",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "attendance",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "loyalty",
+        "type": "tuple"
+      }
+    ],
+    "name": "updateProfile",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

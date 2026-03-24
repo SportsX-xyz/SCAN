@@ -1,0 +1,333 @@
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface-2: #1a1a25;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+  --green: #22c55e;
+  --green-glow: rgba(34, 197, 94, 0.2);
+  --red: #ef4444;
+  --orange: #f59e0b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--accent), #a855f7);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+}
+
+.logo h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.logo span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.wallet-btn {
+  padding: 10px 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wallet-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.wallet-btn.connected {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--green);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 32px;
+}
+
+.tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.tab:hover:not(.active) { color: var(--text); }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.card p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Form */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus { border-color: var(--accent); }
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Status */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.status.success { background: var(--green-glow); color: var(--green); }
+.status.error { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+.status.info { background: var(--accent-glow); color: var(--accent); }
+
+/* FHE Badge */
+.fhe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+/* Campaign list */
+.campaign-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.campaign-item .name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.campaign-item .meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.campaign-item .budget {
+  text-align: right;
+}
+
+.campaign-item .amount {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--green);
+}
+
+.campaign-item .matches {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Architecture diagram */
+.arch-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  flex-wrap: wrap;
+}
+
+.arch-node {
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  min-width: 120px;
+}
+
+.arch-node.fan { background: rgba(34, 197, 94, 0.15); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.3); }
+.arch-node.fhe { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(99, 102, 241, 0.3); }
+.arch-node.sponsor { background: rgba(245, 158, 11, 0.15); color: var(--orange); border: 1px solid rgba(245, 158, 11, 0.3); }
+
+.arch-arrow {
+  font-size: 20px;
+  color: var(--text-dim);
+}
+
+/* Stats */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat .value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat .label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Hidden sections */
+.hidden { display: none; }
