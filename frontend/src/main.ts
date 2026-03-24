@@ -9,6 +9,13 @@ let provider: ethers.BrowserProvider | null = null
 let signer: ethers.JsonRpcSigner | null = null
 let currentTab: 'fan' | 'sponsor' | 'about' = 'about'
 
+// Sanitize user-controlled strings before inserting into HTML
+function esc(str: string): string {
+  const el = document.createElement('span')
+  el.textContent = str
+  return el.innerHTML
+}
+
 // Render
 function render() {
   const app = document.getElementById('app')!
@@ -352,7 +359,7 @@ async function viewCampaignStats() {
     analyticsEl.innerHTML = `
       <div class="campaign-item" style="margin-top: 16px;">
         <div>
-          <div class="name">${stats.name}</div>
+          <div class="name">${esc(stats.name)}</div>
           <div class="meta">
             Sponsor: ${stats.sponsor.slice(0, 6)}...${stats.sponsor.slice(-4)}
             &middot; ${stats.active ? 'Active' : 'Inactive'}

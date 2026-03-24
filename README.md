@@ -127,4 +127,4 @@ MIT
 
 ---
 
-Built by [Next Play AI](https://nextplay.ai) for the [Fhenix Privacy-by-Design dApp Buildathon](https://app.akindo.io/wave-hacks/Nm2qjzEBgCqJD90W)
+Built by [Next Play AI](https://www.nextplayai.xyz) for the [Fhenix Privacy-by-Design dApp Buildathon](https://app.akindo.io/wave-hacks/Nm2qjzEBgCqJD90W)
