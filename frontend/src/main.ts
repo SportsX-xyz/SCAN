@@ -316,9 +316,14 @@ async function connectWallet() {
   }
 }
 
-// Fix #2: Fan Encrypt & Submit — handle contract call errors gracefully
+// Read-only provider that always points to Arbitrum Sepolia
+function getReadProvider(): ethers.JsonRpcProvider {
+  return new ethers.JsonRpcProvider(CHAIN_CONFIG.rpcUrls[0])
+}
+
+// Fan Encrypt & Submit
 async function encryptAndSubmit() {
-  if (!signer || !provider) return
+  if (!signer) return
   const statusEl = document.getElementById('fan-status')!
   const spend = parseInt((document.getElementById('fan-spend') as HTMLInputElement).value)
   const attendance = parseInt((document.getElementById('fan-attendance') as HTMLInputElement).value)
@@ -337,23 +342,9 @@ async function encryptAndSubmit() {
   statusEl.innerHTML = '<div class="status info">Preparing encrypted profile...</div>'
 
   try {
-    // Verify and auto-switch to correct network
-    const network = await provider.getNetwork()
-    if (network.chainId !== 421614n) {
-      statusEl.innerHTML = '<div class="status info">Switching to Arbitrum Sepolia...</div>'
-      try {
-        const raw = provider.provider as any
-        await ensureArbitrumSepolia(raw)
-        // Re-init provider after network switch
-        provider = new ethers.BrowserProvider(raw)
-        signer = await provider.getSigner()
-      } catch {
-        statusEl.innerHTML = '<div class="status error">Please switch to Arbitrum Sepolia in your wallet.</div>'
-        return
-      }
-    }
-
-    const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, provider)
+    // Use direct RPC to read from Arbitrum Sepolia (independent of wallet network)
+    const readProvider = getReadProvider()
+    const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, readProvider)
     const fanAddress = await signer.getAddress()
 
     const exists = await contract.hasProfile(fanAddress)
@@ -444,8 +435,7 @@ async function viewCampaignStats() {
   analyticsEl.innerHTML = '<div class="status info">Loading campaign data...</div>'
 
   try {
-    const rpcProvider = provider || new ethers.JsonRpcProvider(CHAIN_CONFIG.rpcUrls[0])
-    const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, rpcProvider)
+    const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, getReadProvider())
     const stats = await contract.getCampaignStats(campaignId)
 
     analyticsEl.innerHTML = `
@@ -485,23 +475,23 @@ async function requestMatchResult() {
   statusEl.innerHTML = '<div class="status info">Requesting decryption of your match result...</div>'
 
   try {
-    const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
-
-    // Check if match was computed first
     const fanAddress = await signer.getAddress()
-    const computed = await contract.matchComputed(campaignId, fanAddress)
+    const readContract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, getReadProvider())
+
+    const computed = await readContract.matchComputed(campaignId, fanAddress)
     if (!computed) {
       statusEl.innerHTML = '<div class="status error">No blind match has been run for your address on this campaign. The club admin needs to run the match first.</div>'
       return
     }
 
-    const claimed = await contract.rewardClaimed(campaignId, fanAddress)
+    const claimed = await readContract.rewardClaimed(campaignId, fanAddress)
     if (claimed) {
       statusEl.innerHTML = '<div class="status info">You have already claimed the reward for this campaign.</div>'
       return
     }
 
-    const tx = await contract.requestMatchResult(campaignId)
+    const writeContract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
+    const tx = await writeContract.requestMatchResult(campaignId)
     await tx.wait()
     statusEl.innerHTML = `
       <div class="status success">
@@ -527,23 +517,23 @@ async function claimReward() {
   statusEl.innerHTML = '<div class="status info">Claiming reward...</div>'
 
   try {
-    const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
     const fanAddress = await signer.getAddress()
+    const readContract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, getReadProvider())
 
-    // Pre-flight checks to give clear error messages
-    const computed = await contract.matchComputed(campaignId, fanAddress)
+    const computed = await readContract.matchComputed(campaignId, fanAddress)
     if (!computed) {
       statusEl.innerHTML = '<div class="status error">No blind match has been run for your address on this campaign.</div>'
       return
     }
 
-    const claimed = await contract.rewardClaimed(campaignId, fanAddress)
+    const claimed = await readContract.rewardClaimed(campaignId, fanAddress)
     if (claimed) {
       statusEl.innerHTML = '<div class="status info">You have already claimed the reward for this campaign.</div>'
       return
     }
 
-    const tx = await contract.claimReward(campaignId)
+    const writeContract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
+    const tx = await writeContract.claimReward(campaignId)
     const receipt = await tx.wait()
     statusEl.innerHTML = `
       <div class="status success">
