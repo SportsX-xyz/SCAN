@@ -250,6 +250,19 @@ function bindEvents() {
   document.getElementById('claim-btn')?.addEventListener('click', claimReward)
 }
 
+// Ensure wallet is on Arbitrum Sepolia, auto-switch if not
+async function ensureArbitrumSepolia(w: any) {
+  try {
+    await w.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] })
+  } catch (switchError: any) {
+    if (switchError.code === 4902) {
+      await w.request({ method: 'wallet_addEthereumChain', params: [CHAIN_CONFIG] })
+    } else {
+      throw switchError
+    }
+  }
+}
+
 // Wallet — WalletConnect QR code + injected MetaMask fallback
 async function connectWallet() {
   try {
@@ -266,6 +279,9 @@ async function connectWallet() {
     })
 
     await wcProvider.connect()
+
+    // Auto-switch to Arbitrum Sepolia after connection
+    await ensureArbitrumSepolia(wcProvider)
 
     provider = new ethers.BrowserProvider(wcProvider)
     signer = await provider.getSigner()
@@ -287,13 +303,7 @@ async function connectWallet() {
     if (injected) {
       try {
         await injected.request({ method: 'eth_requestAccounts' })
-        try {
-          await injected.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] })
-        } catch (switchError: any) {
-          if (switchError.code === 4902) {
-            await injected.request({ method: 'wallet_addEthereumChain', params: [CHAIN_CONFIG] })
-          }
-        }
+        await ensureArbitrumSepolia(injected)
         provider = new ethers.BrowserProvider(injected)
         signer = await provider.getSigner()
         const a = await signer.getAddress()
@@ -327,11 +337,20 @@ async function encryptAndSubmit() {
   statusEl.innerHTML = '<div class="status info">Preparing encrypted profile...</div>'
 
   try {
-    // Verify we're on the correct network
+    // Verify and auto-switch to correct network
     const network = await provider.getNetwork()
     if (network.chainId !== 421614n) {
-      statusEl.innerHTML = `<div class="status error">Please switch to Arbitrum Sepolia (chain 421614). Currently on chain ${network.chainId.toString()}.</div>`
-      return
+      statusEl.innerHTML = '<div class="status info">Switching to Arbitrum Sepolia...</div>'
+      try {
+        const raw = provider.provider as any
+        await ensureArbitrumSepolia(raw)
+        // Re-init provider after network switch
+        provider = new ethers.BrowserProvider(raw)
+        signer = await provider.getSigner()
+      } catch {
+        statusEl.innerHTML = '<div class="status error">Please switch to Arbitrum Sepolia in your wallet.</div>'
+        return
+      }
     }
 
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, provider)
