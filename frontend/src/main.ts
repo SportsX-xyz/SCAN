@@ -22,7 +22,7 @@ function render() {
   app.innerHTML = `
     <header class="header">
       <div class="logo">
-        <div class="logo-icon">S</div>
+        <img src="/logo.png" alt="SportsX" class="logo-img" />
         <div>
           <h1>SCAN</h1>
           <span>SportsX Confidential Ad-Network</span>
