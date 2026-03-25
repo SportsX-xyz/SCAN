@@ -21,9 +21,18 @@ function esc(str: string): string {
   return el.innerHTML
 }
 
+// Extract a readable error message from contract revert or provider error
+function readableError(e: any): string {
+  const msg = e?.reason || e?.shortMessage || e?.message || String(e)
+  // Strip verbose ethers error wrapping
+  const match = msg.match(/reason="([^"]+)"/) || msg.match(/reverted with reason string '([^']+)'/)
+  return match ? match[1] : msg.length > 200 ? msg.slice(0, 200) + '...' : msg
+}
+
 // Render
 function render() {
   const app = document.getElementById('app')!
+  const showWalletBtn = currentTab !== 'about'
   app.innerHTML = `
     <header class="header">
       <div class="logo">
@@ -33,9 +42,11 @@ function render() {
           <span>SportsX Confidential Ad-Network</span>
         </div>
       </div>
-      <button class="wallet-btn ${signer ? 'connected' : ''}" id="wallet-btn">
-        ${signer ? '&#x2713; ' + walletDisplay : 'Connect Wallet'}
-      </button>
+      ${showWalletBtn ? `
+        <button class="wallet-btn ${signer ? 'connected' : ''}" id="wallet-btn">
+          ${signer ? '&#x2713; ' + walletDisplay : 'Connect Wallet'}
+        </button>
+      ` : ''}
     </header>
 
     <div class="tabs">
@@ -242,10 +253,9 @@ function bindEvents() {
 // Wallet — WalletConnect QR code + injected MetaMask fallback
 async function connectWallet() {
   try {
-    // Create WalletConnect provider — shows QR code modal automatically
     const wcProvider = await EthereumProvider.init({
       projectId: WC_PROJECT_ID,
-      chains: [421614], // Arbitrum Sepolia
+      chains: [421614],
       showQrModal: true,
       metadata: {
         name: 'SCAN - SportsX Confidential Ad-Network',
@@ -255,7 +265,6 @@ async function connectWallet() {
       },
     })
 
-    // This opens the QR code modal
     await wcProvider.connect()
 
     provider = new ethers.BrowserProvider(wcProvider)
@@ -263,7 +272,6 @@ async function connectWallet() {
     const addr = await signer.getAddress()
     walletDisplay = addr.slice(0, 6) + '...' + addr.slice(-4)
 
-    // Listen for disconnect
     wcProvider.on('disconnect', () => {
       provider = null
       signer = null
@@ -298,7 +306,7 @@ async function connectWallet() {
   }
 }
 
-// Fan: Encrypt & Submit
+// Fix #2: Fan Encrypt & Submit — handle contract call errors gracefully
 async function encryptAndSubmit() {
   if (!signer || !provider) return
   const statusEl = document.getElementById('fan-status')!
@@ -311,16 +319,24 @@ async function encryptAndSubmit() {
     return
   }
 
-  statusEl.innerHTML = '<div class="status info">Encrypting data client-side and submitting to chain...</div>'
+  if (spend < 0 || attendance < 0 || loyalty < 0) {
+    statusEl.innerHTML = '<div class="status error">Values must be non-negative.</div>'
+    return
+  }
+
+  statusEl.innerHTML = '<div class="status info">Preparing encrypted profile...</div>'
 
   try {
-    // NOTE: In production, this would use @cofhe/sdk for client-side encryption.
-    // For the MVP demo, the admin registers profiles with the data going through
-    // the contract's FHE.asEuint32() trivial encryption.
-    const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer)
+    // Verify we're on the correct network
+    const network = await provider.getNetwork()
+    if (Number(network.chainId) !== 421614) {
+      statusEl.innerHTML = '<div class="status error">Please switch to Arbitrum Sepolia network.</div>'
+      return
+    }
+
+    const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, provider)
     const fanAddress = await signer.getAddress()
 
-    // Check if profile already exists
     const exists = await contract.hasProfile(fanAddress)
     if (exists) {
       statusEl.innerHTML = '<div class="status info">Profile already registered. Contact club admin to update.</div>'
@@ -331,15 +347,15 @@ async function encryptAndSubmit() {
       <div class="status success">
         Profile data prepared for encryption.<br>
         <small>Spend: ${spend} USD | Attendance: ${attendance} | Loyalty: ${loyalty} years</small><br>
-        <small>In production, data would be encrypted client-side via @cofhe/sdk before submission.</small>
+        <small>In production, data would be encrypted client-side via @cofhe/sdk before submission by the club admin.</small>
       </div>
     `
   } catch (e: any) {
-    statusEl.innerHTML = `<div class="status error">Error: ${e.message || e}</div>`
+    statusEl.innerHTML = `<div class="status error">${readableError(e)}</div>`
   }
 }
 
-// Sponsor: Create Campaign
+// Fix #4: Sponsor Create Campaign — show Campaign ID from event log
 async function createCampaign() {
   if (!signer) return
   const statusEl = document.getElementById('campaign-status')!
@@ -369,14 +385,30 @@ async function createCampaign() {
     )
     statusEl.innerHTML = '<div class="status info">Transaction submitted, waiting for confirmation...</div>'
     const receipt = await tx.wait()
+
+    // Parse CampaignCreated event to get the Campaign ID
+    let campaignId = '—'
+    const iface = new ethers.Interface(CampaignABI)
+    for (const log of receipt.logs) {
+      try {
+        const parsed = iface.parseLog({ topics: log.topics as string[], data: log.data })
+        if (parsed && parsed.name === 'CampaignCreated') {
+          campaignId = parsed.args[0].toString()
+          break
+        }
+      } catch { /* skip non-matching logs */ }
+    }
+
     statusEl.innerHTML = `
       <div class="status success">
         Campaign created successfully!<br>
+        <strong style="font-size: 18px;">Campaign ID: ${campaignId}</strong><br>
+        <small>Save this ID — fans and the admin will need it for blind matching and rewards.</small><br>
         <small>Tx: ${receipt.hash}</small>
       </div>
     `
   } catch (e: any) {
-    statusEl.innerHTML = `<div class="status error">Error: ${e.message || e}</div>`
+    statusEl.innerHTML = `<div class="status error">${readableError(e)}</div>`
   }
 }
 
@@ -385,10 +417,12 @@ async function viewCampaignStats() {
   const analyticsEl = document.getElementById('campaign-analytics')!
   const campaignId = parseInt((document.getElementById('view-campaign-id') as HTMLInputElement).value)
 
-  if (isNaN(campaignId)) {
-    analyticsEl.innerHTML = '<div class="status error">Enter a valid Campaign ID.</div>'
+  if (isNaN(campaignId) || campaignId < 0) {
+    analyticsEl.innerHTML = '<div class="status error">Enter a valid Campaign ID (0 or above).</div>'
     return
   }
+
+  analyticsEl.innerHTML = '<div class="status info">Loading campaign data...</div>'
 
   try {
     const rpcProvider = provider || new ethers.JsonRpcProvider(CHAIN_CONFIG.rpcUrls[0])
@@ -414,17 +448,17 @@ async function viewCampaignStats() {
       </div>
     `
   } catch (e: any) {
-    analyticsEl.innerHTML = `<div class="status error">Error: ${e.message || e}</div>`
+    analyticsEl.innerHTML = `<div class="status error">Campaign not found or network error: ${readableError(e)}</div>`
   }
 }
 
-// Fan: Request match result
+// Fix #3: Fan Request match result — proper error handling
 async function requestMatchResult() {
   if (!signer) return
   const statusEl = document.getElementById('match-status')!
   const campaignId = parseInt((document.getElementById('campaign-id-check') as HTMLInputElement).value)
 
-  if (isNaN(campaignId)) {
+  if (isNaN(campaignId) || campaignId < 0) {
     statusEl.innerHTML = '<div class="status error">Enter a valid Campaign ID.</div>'
     return
   }
@@ -433,6 +467,21 @@ async function requestMatchResult() {
 
   try {
     const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
+
+    // Check if match was computed first
+    const fanAddress = await signer.getAddress()
+    const computed = await contract.matchComputed(campaignId, fanAddress)
+    if (!computed) {
+      statusEl.innerHTML = '<div class="status error">No blind match has been run for your address on this campaign. The club admin needs to run the match first.</div>'
+      return
+    }
+
+    const claimed = await contract.rewardClaimed(campaignId, fanAddress)
+    if (claimed) {
+      statusEl.innerHTML = '<div class="status info">You have already claimed the reward for this campaign.</div>'
+      return
+    }
+
     const tx = await contract.requestMatchResult(campaignId)
     await tx.wait()
     statusEl.innerHTML = `
@@ -441,17 +490,17 @@ async function requestMatchResult() {
       </div>
     `
   } catch (e: any) {
-    statusEl.innerHTML = `<div class="status error">Error: ${e.message || e}</div>`
+    statusEl.innerHTML = `<div class="status error">${readableError(e)}</div>`
   }
 }
 
-// Fan: Claim reward
+// Fix #3: Fan Claim reward — proper error handling
 async function claimReward() {
   if (!signer) return
   const statusEl = document.getElementById('match-status')!
   const campaignId = parseInt((document.getElementById('campaign-id-check') as HTMLInputElement).value)
 
-  if (isNaN(campaignId)) {
+  if (isNaN(campaignId) || campaignId < 0) {
     statusEl.innerHTML = '<div class="status error">Enter a valid Campaign ID.</div>'
     return
   }
@@ -460,6 +509,21 @@ async function claimReward() {
 
   try {
     const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
+    const fanAddress = await signer.getAddress()
+
+    // Pre-flight checks to give clear error messages
+    const computed = await contract.matchComputed(campaignId, fanAddress)
+    if (!computed) {
+      statusEl.innerHTML = '<div class="status error">No blind match has been run for your address on this campaign.</div>'
+      return
+    }
+
+    const claimed = await contract.rewardClaimed(campaignId, fanAddress)
+    if (claimed) {
+      statusEl.innerHTML = '<div class="status info">You have already claimed the reward for this campaign.</div>'
+      return
+    }
+
     const tx = await contract.claimReward(campaignId)
     const receipt = await tx.wait()
     statusEl.innerHTML = `
@@ -469,12 +533,15 @@ async function claimReward() {
       </div>
     `
   } catch (e: any) {
-    if (e.message?.includes('Already claimed')) {
+    const msg = readableError(e)
+    if (msg.includes('Already claimed')) {
       statusEl.innerHTML = '<div class="status info">You have already claimed this reward.</div>'
-    } else if (e.message?.includes('not ready')) {
-      statusEl.innerHTML = '<div class="status info">Decryption not ready yet. Please wait and try again.</div>'
+    } else if (msg.includes('not ready')) {
+      statusEl.innerHTML = '<div class="status info">Decryption not ready yet. Please wait a moment and try again.</div>'
+    } else if (msg.includes('not computed')) {
+      statusEl.innerHTML = '<div class="status error">No blind match has been run for your address on this campaign.</div>'
     } else {
-      statusEl.innerHTML = `<div class="status error">Error: ${e.message || e}</div>`
+      statusEl.innerHTML = `<div class="status error">${msg}</div>`
     }
   }
 }
