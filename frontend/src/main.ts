@@ -1,13 +1,17 @@
 import './style.css'
 import { ethers } from 'ethers'
+import EthereumProvider from '@walletconnect/ethereum-provider'
 import FanProfileABI from './utils/ConfidentialFanProfileABI.json'
 import CampaignABI from './utils/SCANCampaignABI.json'
 import { CONTRACTS, CHAIN_CONFIG } from './utils/contracts'
 import logoUrl from '/logo.png?url'
 
+const WC_PROJECT_ID = '487d89c80dad68856ba26b4a06444db0'
+
 // State
 let provider: ethers.BrowserProvider | null = null
 let signer: ethers.JsonRpcSigner | null = null
+let walletDisplay = ''
 let currentTab: 'fan' | 'sponsor' | 'about' = 'about'
 
 // Sanitize user-controlled strings before inserting into HTML
@@ -30,7 +34,7 @@ function render() {
         </div>
       </div>
       <button class="wallet-btn ${signer ? 'connected' : ''}" id="wallet-btn">
-        ${signer ? '&#x2713; Connected' : 'Connect Wallet'}
+        ${signer ? '&#x2713; ' + walletDisplay : 'Connect Wallet'}
       </button>
     </header>
 
@@ -235,41 +239,62 @@ function bindEvents() {
   document.getElementById('claim-btn')?.addEventListener('click', claimReward)
 }
 
-// Wallet
-function getEthereum(): any {
-  return (window as any).ethereum ?? (window as any).web3?.currentProvider ?? null
-}
-
+// Wallet — WalletConnect QR code + injected MetaMask fallback
 async function connectWallet() {
-  let w = getEthereum()
-
-  // Some wallets inject after page load — wait briefly
-  if (!w) {
-    await new Promise(r => setTimeout(r, 500))
-    w = getEthereum()
-  }
-
-  if (!w) {
-    window.open('https://metamask.io/download/', '_blank')
-    alert('No Web3 wallet detected. Please install MetaMask and refresh this page.')
-    return
-  }
-
   try {
-    await w.request({ method: 'eth_requestAccounts' })
-    // Try to switch to Arbitrum Sepolia
-    try {
-      await w.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] })
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
-        await w.request({ method: 'wallet_addEthereumChain', params: [CHAIN_CONFIG] })
-      }
-    }
-    provider = new ethers.BrowserProvider(w)
+    // Create WalletConnect provider — shows QR code modal automatically
+    const wcProvider = await EthereumProvider.init({
+      projectId: WC_PROJECT_ID,
+      chains: [421614], // Arbitrum Sepolia
+      showQrModal: true,
+      metadata: {
+        name: 'SCAN - SportsX Confidential Ad-Network',
+        description: 'Privacy-first advertising protocol using FHE',
+        url: 'https://sportsx-xyz.github.io/SCAN/',
+        icons: ['https://sportsx-xyz.github.io/SCAN/logo.png'],
+      },
+    })
+
+    // This opens the QR code modal
+    await wcProvider.connect()
+
+    provider = new ethers.BrowserProvider(wcProvider)
     signer = await provider.getSigner()
+    const addr = await signer.getAddress()
+    walletDisplay = addr.slice(0, 6) + '...' + addr.slice(-4)
+
+    // Listen for disconnect
+    wcProvider.on('disconnect', () => {
+      provider = null
+      signer = null
+      walletDisplay = ''
+      render()
+    })
+
     render()
   } catch (e: any) {
-    console.error('Wallet connection failed:', e)
+    console.error('WalletConnect failed:', e)
+    // Fallback: try injected provider (browser extension)
+    const injected = (window as any).ethereum
+    if (injected) {
+      try {
+        await injected.request({ method: 'eth_requestAccounts' })
+        try {
+          await injected.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] })
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await injected.request({ method: 'wallet_addEthereumChain', params: [CHAIN_CONFIG] })
+          }
+        }
+        provider = new ethers.BrowserProvider(injected)
+        signer = await provider.getSigner()
+        const a = await signer.getAddress()
+        walletDisplay = a.slice(0, 6) + '...' + a.slice(-4)
+        render()
+      } catch (err: any) {
+        console.error('Injected wallet failed:', err)
+      }
+    }
   }
 }
 
