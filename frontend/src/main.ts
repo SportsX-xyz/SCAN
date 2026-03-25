@@ -3,6 +3,7 @@ import { ethers } from 'ethers'
 import FanProfileABI from './utils/ConfidentialFanProfileABI.json'
 import CampaignABI from './utils/SCANCampaignABI.json'
 import { CONTRACTS, CHAIN_CONFIG } from './utils/contracts'
+import logoUrl from '/logo.png?url'
 
 // State
 let provider: ethers.BrowserProvider | null = null
@@ -22,7 +23,7 @@ function render() {
   app.innerHTML = `
     <header class="header">
       <div class="logo">
-        <img src="/logo.png" alt="SportsX" class="logo-img" />
+        <img src="${logoUrl}" alt="SportsX" class="logo-img" />
         <div>
           <h1>SCAN</h1>
           <span>SportsX Confidential Ad-Network</span>
@@ -235,12 +236,25 @@ function bindEvents() {
 }
 
 // Wallet
+function getEthereum(): any {
+  return (window as any).ethereum ?? (window as any).web3?.currentProvider ?? null
+}
+
 async function connectWallet() {
-  const w = (window as any).ethereum
+  let w = getEthereum()
+
+  // Some wallets inject after page load — wait briefly
   if (!w) {
-    alert('Please install MetaMask or another Web3 wallet.')
+    await new Promise(r => setTimeout(r, 500))
+    w = getEthereum()
+  }
+
+  if (!w) {
+    window.open('https://metamask.io/download/', '_blank')
+    alert('No Web3 wallet detected. Please install MetaMask and refresh this page.')
     return
   }
+
   try {
     await w.request({ method: 'eth_requestAccounts' })
     // Try to switch to Arbitrum Sepolia
