@@ -263,6 +263,31 @@ async function ensureArbitrumSepolia(w: any) {
   }
 }
 
+// Check wallet is on correct network before write operations, return error message or null
+async function checkNetworkForWrite(): Promise<string | null> {
+  if (!provider || !signer) return 'Wallet not connected.'
+  try {
+    const network = await provider.getNetwork()
+    if (network.chainId !== 421614n) {
+      // Try auto-switch
+      try {
+        const raw = (provider as any).provider || provider
+        await ensureArbitrumSepolia(raw)
+        provider = new ethers.BrowserProvider(raw)
+        signer = await provider.getSigner()
+        const addr = await signer.getAddress()
+        walletDisplay = addr.slice(0, 6) + '...' + addr.slice(-4)
+        return null // success
+      } catch {
+        return `Your wallet is on chain ${network.chainId.toString()}, not Arbitrum Sepolia (421614). Please open MetaMask and manually switch to Arbitrum Sepolia, then try again.`
+      }
+    }
+    return null
+  } catch {
+    return 'Could not detect network. Please check your wallet connection.'
+  }
+}
+
 // Wallet — WalletConnect QR code + injected MetaMask fallback
 async function connectWallet() {
   try {
@@ -381,6 +406,14 @@ async function createCampaign() {
     return
   }
 
+  // Check network before write operation
+  statusEl.innerHTML = '<div class="status info">Checking network...</div>'
+  const networkErr = await checkNetworkForWrite()
+  if (networkErr) {
+    statusEl.innerHTML = `<div class="status error">${networkErr}</div>`
+    return
+  }
+
   statusEl.innerHTML = '<div class="status info">Creating campaign on-chain...</div>'
 
   try {
@@ -472,6 +505,13 @@ async function requestMatchResult() {
     return
   }
 
+  statusEl.innerHTML = '<div class="status info">Checking network...</div>'
+  const netErr1 = await checkNetworkForWrite()
+  if (netErr1) {
+    statusEl.innerHTML = `<div class="status error">${netErr1}</div>`
+    return
+  }
+
   statusEl.innerHTML = '<div class="status info">Requesting decryption of your match result...</div>'
 
   try {
@@ -511,6 +551,13 @@ async function claimReward() {
 
   if (isNaN(campaignId) || campaignId < 0) {
     statusEl.innerHTML = '<div class="status error">Enter a valid Campaign ID.</div>'
+    return
+  }
+
+  statusEl.innerHTML = '<div class="status info">Checking network...</div>'
+  const netErr2 = await checkNetworkForWrite()
+  if (netErr2) {
+    statusEl.innerHTML = `<div class="status error">${netErr2}</div>`
     return
   }
 
