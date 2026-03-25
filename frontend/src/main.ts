@@ -329,8 +329,8 @@ async function encryptAndSubmit() {
   try {
     // Verify we're on the correct network
     const network = await provider.getNetwork()
-    if (Number(network.chainId) !== 421614) {
-      statusEl.innerHTML = '<div class="status error">Please switch to Arbitrum Sepolia network.</div>'
+    if (network.chainId !== 421614n) {
+      statusEl.innerHTML = `<div class="status error">Please switch to Arbitrum Sepolia (chain 421614). Currently on chain ${network.chainId.toString()}.</div>`
       return
     }
 
