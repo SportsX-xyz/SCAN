@@ -4,26 +4,36 @@ pragma solidity ^0.8.25;
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./ConfidentialFanProfile.sol";
 
-/// @title SCANCampaign
-/// @notice The FHE Matching Engine for SCAN. Sponsors create campaigns with
-///         targeting criteria. The contract performs blind matching against
-///         encrypted fan profiles — no one sees who matched until the fan claims.
+/// @title SCANCampaign — Wave 2: CPM Ad Delivery + Three-Way Revenue Split
+/// @notice FHE blind matching engine with ProofOfView settlement.
+///         Flow: blindMatch → publishMatchResult (off-chain decryptForTx) → confirmView
+///         On confirmed view: auto-split 60% club / 30% fan / 10% protocol
 contract SCANCampaign {
 
+    /// @notice Ad content type
+    enum AdType { Video, Banner, Link }
+
     struct Campaign {
-        address sponsor;           // Who created (and funded) the campaign
+        address sponsor;           // Who created and funded the campaign
+        address clubAddress;       // Sports club receiving the provider share (60%)
         string  name;              // Campaign display name
+        string  adContentURI;      // IPFS/Arweave URI for ad content (video, banner, link)
+        AdType  adType;            // Type of ad content
         euint32 minSpend;          // Encrypted threshold: minimum fan spend
         euint32 minAttendance;     // Encrypted threshold: minimum attendance
         euint32 minLoyalty;        // Encrypted threshold: minimum loyalty years
-        uint256 rewardPerFan;      // Reward amount per matched fan (in wei)
+        uint256 costPerImpression; // ETH cost per verified ad impression
         uint256 totalBudget;       // Total deposited budget
         uint256 remainingBudget;   // Remaining budget
-        uint256 matchCount;        // Number of successful matches (aggregate only)
+        uint256 matchCount;        // Fans confirmed as matched (after on-chain decryption)
+        uint256 impressionCount;   // Verified ad views (ProofOfView confirmed)
         bool    active;
     }
 
-    /// @notice Reference to the fan profile contract
+    /// @notice Protocol treasury — receives 10% of each impression
+    address public protocolTreasury;
+
+    /// @notice Fan profile registry
     ConfidentialFanProfile public fanProfiles;
 
     /// @notice Campaign ID counter
@@ -32,45 +42,80 @@ contract SCANCampaign {
     /// @notice Campaign ID => Campaign data
     mapping(uint256 => Campaign) public campaigns;
 
-    /// @notice Campaign ID => Fan address => encrypted match result
+    /// @notice Campaign ID => Fan address => encrypted match result (ebool)
     mapping(uint256 => mapping(address => ebool)) private matchResults;
 
-    /// @notice Campaign ID => Fan address => whether match has been computed
+    /// @notice Campaign ID => Fan address => blind match has been computed
     mapping(uint256 => mapping(address => bool)) public matchComputed;
 
-    /// @notice Campaign ID => Fan address => whether reward was claimed
+    /// @notice Campaign ID => Fan address => match result has been published on-chain via publishMatchResult
+    mapping(uint256 => mapping(address => bool)) public matchConfirmed;
+
+    /// @notice Campaign ID => Fan address => plaintext match outcome (set by publishMatchResult)
+    mapping(uint256 => mapping(address => bool)) public isMatched;
+
+    /// @notice Campaign ID => Fan address => fan confirmed viewing the ad (ProofOfView)
+    mapping(uint256 => mapping(address => bool)) public adViewed;
+
+    /// @notice Campaign ID => Fan address => impression reward has been settled
     mapping(uint256 => mapping(address => bool)) public rewardClaimed;
 
-    event CampaignCreated(uint256 indexed campaignId, address indexed sponsor, string name);
+    event CampaignCreated(
+        uint256 indexed campaignId,
+        address indexed sponsor,
+        address indexed clubAddress,
+        string name,
+        AdType adType,
+        uint256 costPerImpression
+    );
     event BlindMatchExecuted(uint256 indexed campaignId, address indexed fan);
-    event RewardClaimed(uint256 indexed campaignId, address indexed fan, uint256 amount);
+    event MatchResultPublished(uint256 indexed campaignId, address indexed fan, bool matched);
+    event AdViewConfirmed(uint256 indexed campaignId, address indexed fan, uint256 costPerImpression);
+    event RewardSettled(
+        uint256 indexed campaignId,
+        address indexed fan,
+        uint256 clubAmount,
+        uint256 fanAmount,
+        uint256 protocolAmount
+    );
     event CampaignDeactivated(uint256 indexed campaignId);
 
-    constructor(address _fanProfiles) {
+    constructor(address _fanProfiles, address _protocolTreasury) {
         fanProfiles = ConfidentialFanProfile(_fanProfiles);
+        protocolTreasury = _protocolTreasury;
     }
 
-    /// @notice Create a new campaign with targeting thresholds.
-    ///         Thresholds are trivially encrypted on-chain (public values converted to ciphertexts)
-    ///         so they can be compared with encrypted fan data via FHE operations.
-    /// @param name Campaign display name
-    /// @param minSpendPlain Minimum spend threshold (plaintext, will be trivially encrypted)
-    /// @param minAttendancePlain Minimum attendance threshold
-    /// @param minLoyaltyPlain Minimum loyalty years threshold
-    /// @param rewardPerFan Amount of ETH reward per matched fan (in wei)
+    // ─── Campaign Management ────────────────────────────────────────────────
+
+    /// @notice Create a new ad campaign with content metadata and targeting criteria.
+    ///         Budget deposited in ETH. Each verified impression triggers 60/30/10 split.
+    /// @param name           Campaign display name
+    /// @param adContentURI   IPFS URI for ad content (video URL, banner image, link)
+    /// @param adType         Type of ad content (Video / Banner / Link)
+    /// @param clubAddress    Club wallet receiving 60% of each impression
+    /// @param minSpendPlain  Minimum fan spend threshold (plaintext → trivially encrypted for FHE)
+    /// @param minAttendancePlain  Minimum attendance threshold
+    /// @param minLoyaltyPlain    Minimum loyalty years threshold
+    /// @param costPerImpression  ETH amount charged per verified ad view
     function createCampaign(
         string calldata name,
+        string calldata adContentURI,
+        AdType adType,
+        address clubAddress,
         uint32 minSpendPlain,
         uint32 minAttendancePlain,
         uint32 minLoyaltyPlain,
-        uint256 rewardPerFan
+        uint256 costPerImpression
     ) external payable returns (uint256 campaignId) {
         require(msg.value > 0, "Must deposit budget");
-        require(rewardPerFan > 0, "Reward must be > 0");
+        require(costPerImpression > 0, "Cost per impression must be > 0");
+        require(msg.value >= costPerImpression, "Budget must cover at least one impression");
+        require(clubAddress != address(0), "Invalid club address");
+        require(bytes(adContentURI).length > 0, "Ad content URI required");
 
         campaignId = nextCampaignId++;
 
-        // Trivially encrypt thresholds (these become ciphertexts for FHE comparison)
+        // Trivially encrypt thresholds — converted to ciphertexts for FHE comparison
         euint32 encMinSpend = FHE.asEuint32(minSpendPlain);
         euint32 encMinAttendance = FHE.asEuint32(minAttendancePlain);
         euint32 encMinLoyalty = FHE.asEuint32(minLoyaltyPlain);
@@ -81,55 +126,55 @@ contract SCANCampaign {
 
         campaigns[campaignId] = Campaign({
             sponsor: msg.sender,
+            clubAddress: clubAddress,
             name: name,
+            adContentURI: adContentURI,
+            adType: adType,
             minSpend: encMinSpend,
             minAttendance: encMinAttendance,
             minLoyalty: encMinLoyalty,
-            rewardPerFan: rewardPerFan,
+            costPerImpression: costPerImpression,
             totalBudget: msg.value,
             remainingBudget: msg.value,
             matchCount: 0,
+            impressionCount: 0,
             active: true
         });
 
-        emit CampaignCreated(campaignId, msg.sender, name);
+        emit CampaignCreated(campaignId, msg.sender, clubAddress, name, adType, costPerImpression);
     }
 
-    /// @notice Execute a blind match for a single fan against a campaign.
-    ///         The FHE engine compares encrypted fan data against encrypted thresholds.
-    ///         Result is an encrypted boolean — nobody knows who matched.
-    /// @param campaignId The campaign to match against
-    /// @param fan The fan address to evaluate
+    // ─── Blind Matching (FHE) ────────────────────────────────────────────────
+
+    /// @notice Execute a blind FHE match for a single fan.
+    ///         Encrypted fan metrics are compared against encrypted thresholds.
+    ///         Result is an encrypted boolean — nobody knows who matched until decrypt.
     function blindMatch(uint256 campaignId, address fan) external {
         Campaign storage c = campaigns[campaignId];
         require(c.active, "Campaign not active");
         require(!matchComputed[campaignId][fan], "Already matched");
         require(fanProfiles.hasProfile(fan), "Fan has no profile");
 
-        // Fetch encrypted fan metrics
         (euint32 fanSpend, euint32 fanAttendance, euint32 fanLoyalty) = fanProfiles.getProfile(fan);
 
-        // FHE Blind Match: compare encrypted fan data against encrypted thresholds
-        // All comparisons happen on encrypted data — no plaintext is revealed
-        ebool spendMatch = FHE.gte(fanSpend, c.minSpend);
+        // All comparisons on encrypted data — zero knowledge revealed
+        ebool spendMatch      = FHE.gte(fanSpend, c.minSpend);
         ebool attendanceMatch = FHE.gte(fanAttendance, c.minAttendance);
-        ebool loyaltyMatch = FHE.gte(fanLoyalty, c.minLoyalty);
+        ebool loyaltyMatch    = FHE.gte(fanLoyalty, c.minLoyalty);
 
-        // Combine all conditions: fan must meet ALL thresholds
-        ebool isMatch = FHE.and(spendMatch, attendanceMatch);
-        isMatch = FHE.and(isMatch, loyaltyMatch);
+        // Fan must meet ALL thresholds
+        ebool matched = FHE.and(FHE.and(spendMatch, attendanceMatch), loyaltyMatch);
 
-        // Store encrypted result — only the fan can later decrypt to check
-        FHE.allowThis(isMatch);
-        FHE.allow(isMatch, fan);
+        FHE.allowThis(matched);
+        FHE.allow(matched, fan); // Only this fan can decrypt their own result
 
-        matchResults[campaignId][fan] = isMatch;
+        matchResults[campaignId][fan] = matched;
         matchComputed[campaignId][fan] = true;
 
         emit BlindMatchExecuted(campaignId, fan);
     }
 
-    /// @notice Execute blind match for a batch of fans
+    /// @notice Batch blind match for multiple fans
     function batchBlindMatch(uint256 campaignId, address[] calldata fans) external {
         for (uint256 i = 0; i < fans.length; i++) {
             if (!matchComputed[campaignId][fans[i]] && fanProfiles.hasProfile(fans[i])) {
@@ -138,46 +183,95 @@ contract SCANCampaign {
         }
     }
 
-    /// @notice Fan initiates decryption of their match result.
-    ///         This triggers async decryption — result available in a later call.
-    function requestMatchResult(uint256 campaignId) external {
-        require(matchComputed[campaignId][msg.sender], "Match not computed");
-        require(!rewardClaimed[campaignId][msg.sender], "Already claimed");
+    // ─── Decrypt Flow (new @cofhe/sdk) ──────────────────────────────────────
 
-        ebool result = matchResults[campaignId][msg.sender];
-        FHE.decrypt(result);
+    /// @notice Returns the ciphertext hash for a fan's match result.
+    ///         Use this with `client.decryptForTx(ctHash).withoutPermit().execute()` off-chain.
+    function getMatchResultCtHash(uint256 campaignId, address fan) external view returns (bytes32) {
+        require(matchComputed[campaignId][fan], "Match not computed");
+        return ebool.unwrap(matchResults[campaignId][fan]);
     }
 
-    /// @notice Fan claims reward after decryption is ready.
-    ///         The decrypted match result reveals whether the fan qualified.
-    function claimReward(uint256 campaignId) external {
-        require(matchComputed[campaignId][msg.sender], "Match not computed");
-        require(!rewardClaimed[campaignId][msg.sender], "Already claimed");
+    /// @notice Fan publishes their decrypted match result on-chain.
+    ///
+    ///         Off-chain steps (using the cofhe SDK):
+    ///           1. const ctHash = await campaign.getMatchResultCtHash(campaignId, fan)
+    ///           2. const { decryptedValue, signature } = await client.decryptForTx(ctHash)
+    ///                .withoutPermit().execute()
+    ///           3. Call this function with (campaignId, decryptedValue != 0n, signature)
+    ///
+    ///         The Fhenix coprocessor signature cryptographically verifies the plaintext.
+    function publishMatchResult(
+        uint256 campaignId,
+        bool result,
+        bytes calldata signature
+    ) external {
+        require(matchComputed[campaignId][msg.sender], "Match not computed yet");
+        require(!matchConfirmed[campaignId][msg.sender], "Result already published");
+
+        // Verify the decryption result — coprocessor signature must be valid
+        FHE.publishDecryptResult(matchResults[campaignId][msg.sender], result, signature);
+
+        matchConfirmed[campaignId][msg.sender] = true;
+        isMatched[campaignId][msg.sender] = result;
+
+        if (result) {
+            campaigns[campaignId].matchCount++;
+        }
+
+        emit MatchResultPublished(campaignId, msg.sender, result);
+    }
+
+    // ─── ProofOfView + Settlement ────────────────────────────────────────────
+
+    /// @notice Fan confirms they viewed the ad (Proof of View).
+    ///         Requirements: match confirmed on-chain AND fan was matched.
+    ///         Triggers automatic three-way settlement:
+    ///           60% → Club (provided the fan data)
+    ///           30% → Fan  (reward for viewing)
+    ///           10% → Protocol treasury
+    function confirmView(uint256 campaignId) external {
+        require(matchConfirmed[campaignId][msg.sender], "Match result not published yet");
+        require(isMatched[campaignId][msg.sender], "Not matched for this campaign");
+        require(!adViewed[campaignId][msg.sender], "View already confirmed");
+        require(!rewardClaimed[campaignId][msg.sender], "Reward already claimed");
 
         Campaign storage c = campaigns[campaignId];
         require(c.active, "Campaign not active");
-        require(c.remainingBudget >= c.rewardPerFan, "Campaign budget exhausted");
+        require(c.remainingBudget >= c.costPerImpression, "Campaign budget exhausted");
 
-        // Get the decrypted match result
-        ebool result = matchResults[campaignId][msg.sender];
-        (bool matched, bool isReady) = FHE.getDecryptResultSafe(result);
-        require(isReady, "Decryption not ready yet");
-
+        adViewed[campaignId][msg.sender]   = true;
         rewardClaimed[campaignId][msg.sender] = true;
+        c.impressionCount++;
 
-        // If the fan matched, send reward
-        if (matched) {
-            c.remainingBudget -= c.rewardPerFan;
-            c.matchCount++;
+        uint256 cost = c.costPerImpression;
+        c.remainingBudget -= cost;
 
-            (bool sent, ) = payable(msg.sender).call{value: c.rewardPerFan}("");
-            require(sent, "Transfer failed");
+        // Three-way split — remainder goes to protocol to avoid wei rounding loss
+        uint256 clubAmount     = (cost * 6000) / 10000;  // 60%
+        uint256 fanAmount      = (cost * 3000) / 10000;  // 30%
+        uint256 protocolAmount = cost - clubAmount - fanAmount; // 10% + any rounding dust
 
-            emit RewardClaimed(campaignId, msg.sender, c.rewardPerFan);
+        if (clubAmount > 0) {
+            (bool ok, ) = payable(c.clubAddress).call{value: clubAmount}("");
+            require(ok, "Club transfer failed");
         }
+        if (fanAmount > 0) {
+            (bool ok, ) = payable(msg.sender).call{value: fanAmount}("");
+            require(ok, "Fan transfer failed");
+        }
+        if (protocolAmount > 0) {
+            (bool ok, ) = payable(protocolTreasury).call{value: protocolAmount}("");
+            require(ok, "Protocol transfer failed");
+        }
+
+        emit AdViewConfirmed(campaignId, msg.sender, cost);
+        emit RewardSettled(campaignId, msg.sender, clubAmount, fanAmount, protocolAmount);
     }
 
-    /// @notice Sponsor can deactivate their campaign and withdraw remaining budget
+    // ─── Sponsor Actions ─────────────────────────────────────────────────────
+
+    /// @notice Sponsor deactivates campaign and withdraws remaining budget
     function deactivateCampaign(uint256 campaignId) external {
         Campaign storage c = campaigns[campaignId];
         require(msg.sender == c.sponsor, "Not the sponsor");
@@ -188,31 +282,41 @@ contract SCANCampaign {
         c.remainingBudget = 0;
 
         if (refund > 0) {
-            (bool sent, ) = payable(c.sponsor).call{value: refund}("");
-            require(sent, "Refund failed");
+            (bool ok, ) = payable(c.sponsor).call{value: refund}("");
+            require(ok, "Refund failed");
         }
 
         emit CampaignDeactivated(campaignId);
     }
 
+    // ─── View Functions ──────────────────────────────────────────────────────
+
     /// @notice Get campaign stats (public info only — no encrypted data exposed)
     function getCampaignStats(uint256 campaignId) external view returns (
         address sponsor,
+        address clubAddress,
         string memory name,
-        uint256 rewardPerFan,
+        string memory adContentURI,
+        AdType adType,
+        uint256 costPerImpression,
         uint256 totalBudget,
         uint256 remainingBudget,
         uint256 matchCount,
+        uint256 impressionCount,
         bool active
     ) {
         Campaign storage c = campaigns[campaignId];
         return (
             c.sponsor,
+            c.clubAddress,
             c.name,
-            c.rewardPerFan,
+            c.adContentURI,
+            c.adType,
+            c.costPerImpression,
             c.totalBudget,
             c.remainingBudget,
             c.matchCount,
+            c.impressionCount,
             c.active
         );
     }
