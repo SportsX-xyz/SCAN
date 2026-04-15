@@ -173,7 +173,11 @@ async function connectWallet() {
       },
     })
     await wcProvider.connect()
-    await ensureArbitrumSepolia(wcProvider)
+    try {
+      await ensureArbitrumSepolia(wcProvider)
+    } catch (netErr) {
+      console.warn('Network switch via WalletConnect failed (user may need to switch manually):', netErr)
+    }
     rawEip1193 = wcProvider
     provider = new ethers.BrowserProvider(wcProvider)
     signer = await provider.getSigner()
