@@ -416,19 +416,37 @@
         "type": "address"
       },
       {
-        "internalType": "uint32",
-        "name": "minSpendPlain",
-        "type": "uint32"
+        "components": [
+          { "internalType": "uint256", "name": "ctHash", "type": "uint256" },
+          { "internalType": "uint8", "name": "securityZone", "type": "uint8" },
+          { "internalType": "uint8", "name": "utype", "type": "uint8" },
+          { "internalType": "bytes", "name": "signature", "type": "bytes" }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "minSpend",
+        "type": "tuple"
       },
       {
-        "internalType": "uint32",
-        "name": "minAttendancePlain",
-        "type": "uint32"
+        "components": [
+          { "internalType": "uint256", "name": "ctHash", "type": "uint256" },
+          { "internalType": "uint8", "name": "securityZone", "type": "uint8" },
+          { "internalType": "uint8", "name": "utype", "type": "uint8" },
+          { "internalType": "bytes", "name": "signature", "type": "bytes" }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "minAttendance",
+        "type": "tuple"
       },
       {
-        "internalType": "uint32",
-        "name": "minLoyaltyPlain",
-        "type": "uint32"
+        "components": [
+          { "internalType": "uint256", "name": "ctHash", "type": "uint256" },
+          { "internalType": "uint8", "name": "securityZone", "type": "uint8" },
+          { "internalType": "uint8", "name": "utype", "type": "uint8" },
+          { "internalType": "bytes", "name": "signature", "type": "bytes" }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "minLoyalty",
+        "type": "tuple"
       },
       {
         "internalType": "uint256",

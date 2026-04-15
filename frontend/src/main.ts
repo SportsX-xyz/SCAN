@@ -1461,14 +1461,43 @@ async function createCampaign() {
   const netErr = await checkNetworkForWrite()
   if (netErr) { statusEl.innerHTML = `<div class="status error">${netErr}</div>`; return }
 
-  statusEl.innerHTML = '<div class="status info">Creating campaign on-chain...</div>'
   try {
+    // Step 1: encrypt thresholds client-side (same pattern as registerProfile)
+    statusEl.innerHTML = '<div class="status info">Step 1/3: Connecting to CoFHE...</div>'
+    await ensureCofheConnected()
+
+    statusEl.innerHTML = '<div class="status info">Step 2/3: Encrypting thresholds...</div>'
+    const [encMinSpend, encMinAttendance, encMinLoyalty] = await cofheClient
+      .encryptInputs([
+        Encryptable.uint32(BigInt(minSpend)),
+        Encryptable.uint32(BigInt(minAttendance)),
+        Encryptable.uint32(BigInt(minLoyalty)),
+      ])
+      .setAccount(await signer!.getAddress())
+      .execute()
+
+    // Step 2: estimateGas pre-check to catch contract errors before MetaMask prompt
     const contract = new ethers.Contract(CONTRACTS.CAMPAIGN, CampaignABI, signer)
+    let gasLimit: bigint
+    try {
+      gasLimit = await contract.createCampaign.estimateGas(
+        name, adContentURI, adType, clubAddress,
+        encMinSpend, encMinAttendance, encMinLoyalty,
+        ethers.parseEther(reward),
+        { value: ethers.parseEther(budget) }
+      )
+      gasLimit = gasLimit * 130n / 100n
+    } catch (gasErr: any) {
+      statusEl.innerHTML = `<div class="status error">Contract error: ${readableError(gasErr)}</div>`
+      return
+    }
+
+    statusEl.innerHTML = '<div class="status info">Step 3/3: Check MetaMask and press Confirm...</div>'
     const tx = await contract.createCampaign(
       name, adContentURI, adType, clubAddress,
-      minSpend, minAttendance, minLoyalty,
+      encMinSpend, encMinAttendance, encMinLoyalty,
       ethers.parseEther(reward),
-      { value: ethers.parseEther(budget) }
+      { value: ethers.parseEther(budget), gasLimit }
     )
     statusEl.innerHTML = '<div class="status info">Confirming...</div>'
     const receipt = await tx.wait()

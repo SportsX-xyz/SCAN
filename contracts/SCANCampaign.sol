@@ -94,22 +94,23 @@ contract SCANCampaign {
 
     /// @notice Create a new ad campaign with content metadata and targeting criteria.
     ///         Budget deposited in ETH. Each verified impression triggers 60/30/10 split.
+    ///         Thresholds must be encrypted client-side via the cofhe SDK before calling.
     /// @param name           Campaign display name
     /// @param adContentURI   IPFS URI for ad content (video URL, banner image, link)
     /// @param adType         Type of ad content (Video / Banner / Link)
     /// @param clubAddress    Club wallet receiving 60% of each impression
-    /// @param minSpendPlain  Minimum fan spend threshold (plaintext → trivially encrypted for FHE)
-    /// @param minAttendancePlain  Minimum attendance threshold
-    /// @param minLoyaltyPlain    Minimum loyalty years threshold
+    /// @param minSpend       Encrypted minimum fan spend threshold (client-side InEuint32)
+    /// @param minAttendance  Encrypted minimum attendance threshold
+    /// @param minLoyalty     Encrypted minimum loyalty years threshold
     /// @param costPerImpression  ETH amount charged per verified ad view
     function createCampaign(
         string calldata name,
         string calldata adContentURI,
         AdType adType,
         address clubAddress,
-        uint32 minSpendPlain,
-        uint32 minAttendancePlain,
-        uint32 minLoyaltyPlain,
+        InEuint32 memory minSpend,
+        InEuint32 memory minAttendance,
+        InEuint32 memory minLoyalty,
         uint256 costPerImpression
     ) external payable returns (uint256 campaignId) {
         require(msg.value > 0, "Must deposit budget");
@@ -120,10 +121,10 @@ contract SCANCampaign {
 
         campaignId = nextCampaignId++;
 
-        // Trivially encrypt thresholds — converted to ciphertexts for FHE comparison
-        euint32 encMinSpend = FHE.asEuint32(minSpendPlain);
-        euint32 encMinAttendance = FHE.asEuint32(minAttendancePlain);
-        euint32 encMinLoyalty = FHE.asEuint32(minLoyaltyPlain);
+        // Verify and store client-side encrypted thresholds
+        euint32 encMinSpend = FHE.asEuint32(minSpend);
+        euint32 encMinAttendance = FHE.asEuint32(minAttendance);
+        euint32 encMinLoyalty = FHE.asEuint32(minLoyalty);
 
         FHE.allowThis(encMinSpend);
         FHE.allowThis(encMinAttendance);

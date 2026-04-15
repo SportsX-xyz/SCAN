@@ -1,8 +1,8 @@
 // Contract addresses — update after deployment
 // Arbitrum Sepolia addresses kept for reference
 export const CONTRACTS_ARB_SEPOLIA = {
-  FAN_PROFILE: '0x35Bd9f53261AbD0314C6349492397DE0F4d07Ec3',
-  CAMPAIGN:    '0xc2011a5942f12A67C7bdeDD08948C3F26564132e',
+  FAN_PROFILE: '0xED39DbD39AF8a324888bDc2068a558e8eba6fC75',
+  CAMPAIGN:    '0x7602c6FD821e094E105677b6DC26B1e63Dc523bb',
 }
 
 // Local Hardhat node (for demo / development)
