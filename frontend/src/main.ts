@@ -5,8 +5,30 @@ import FanProfileABI from './utils/ConfidentialFanProfileABI.json'
 import CampaignABI from './utils/SCANCampaignABI.json'
 import { CONTRACTS, CHAIN_CONFIG } from './utils/contracts'
 import logoUrl from '/logo.png?url'
+import { createCofheConfig, createCofheClient } from '@cofhe/sdk/web'
+import { Encryptable } from '@cofhe/sdk'
+import { arbSepolia } from '@cofhe/sdk/chains'
+import { createWalletClient, createPublicClient, custom, http } from 'viem'
+import { arbitrumSepolia } from 'viem/chains'
 
 const WC_PROJECT_ID = '487d89c80dad68856ba26b4a06444db0'
+
+// ─── CoFHE Client ─────────────────────────────────────────────────────────────
+
+const cofheConfig = createCofheConfig({ supportedChains: [arbSepolia] })
+const cofheClient = createCofheClient(cofheConfig)
+
+async function ensureCofheConnected() {
+  const publicClient = createPublicClient({
+    chain: arbitrumSepolia,
+    transport: http(CHAIN_CONFIG.rpcUrls[0]),
+  })
+  const walletClient = createWalletClient({
+    chain: arbitrumSepolia,
+    transport: custom(rawEip1193),
+  })
+  await cofheClient.connect(publicClient, walletClient)
+}
 
 // ─── App State ────────────────────────────────────────────────────────────────
 
@@ -921,16 +943,27 @@ async function registerFan() {
   const netErr = await checkNetworkForWrite()
   if (netErr) { statusEl.innerHTML = `<div class="status error">${netErr}</div>`; return }
 
-  statusEl.innerHTML = '<div class="status info">Encrypting and registering on-chain...</div>'
+  statusEl.innerHTML = '<div class="status info">Step 1/3: Connecting to Fhenix CoFHE coprocessor...</div>'
   try {
+    await ensureCofheConnected()
+    statusEl.innerHTML = '<div class="status info">Step 2/3: Encrypting fan metrics client-side via FHE...</div>'
+    const [encSpend, encAttendance, encLoyalty] = await cofheClient
+      .encryptInputs([
+        Encryptable.uint32(BigInt(spend)),
+        Encryptable.uint32(BigInt(attendance)),
+        Encryptable.uint32(BigInt(loyalty)),
+      ])
+      .setAccount(fanAddr)
+      .execute()
+
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
-    const tx = await contract.adminRegisterPlain(fanAddr, spend, attendance, loyalty)
-    statusEl.innerHTML = '<div class="status info">Transaction submitted, confirming...</div>'
+    statusEl.innerHTML = '<div class="status info">Step 3/3: Submitting encrypted profile on-chain...</div>'
+    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty)
     await tx.wait()
     statusEl.innerHTML = `
       <div class="status success">
         Fan registered successfully!<br>
-        <small>${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} — metrics encrypted on-chain via FHE.asEuint32</small>
+        <small>${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} — metrics FHE-encrypted on-chain via CoFHE</small>
       </div>
     `
     // Refresh fan list
@@ -950,15 +983,28 @@ async function approveApplication(fanAddr: string, spend: number, attendance: nu
   const btn = document.querySelector(`[data-approve="${fanAddr}"]`) as HTMLButtonElement | null
   if (btn) { btn.disabled = true; btn.textContent = 'Registering...' }
 
-  statusEl.innerHTML = `<div class="status info">Encrypting and registering ${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} on-chain...</div>`
+  statusEl.innerHTML = `<div class="status info">Step 1/3: Connecting to Fhenix CoFHE coprocessor...</div>`
   try {
+    await ensureCofheConnected()
+
+    statusEl.innerHTML = `<div class="status info">Step 2/3: Encrypting fan metrics client-side via FHE...</div>`
+    const [encSpend, encAttendance, encLoyalty] = await cofheClient
+      .encryptInputs([
+        Encryptable.uint32(BigInt(spend)),
+        Encryptable.uint32(BigInt(attendance)),
+        Encryptable.uint32(BigInt(loyalty)),
+      ])
+      .setAccount(fanAddr)
+      .execute()
+
+    statusEl.innerHTML = `<div class="status info">Step 3/3: Submitting encrypted profile on-chain...</div>`
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
-    const tx = await contract.adminRegisterPlain(fanAddr, spend, attendance, loyalty)
+    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty)
     await tx.wait()
 
     removePendingApplication(fanAddr)
-    statusEl.innerHTML = `<div class="status success">&#x2714; ${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} registered — metrics are now FHE-encrypted on-chain.</div>`
-    await loadClubData()   // refreshes fan table + re-renders
+    statusEl.innerHTML = `<div class="status success">&#x2714; ${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} registered — metrics are FHE-encrypted on-chain via CoFHE.</div>`
+    await loadClubData()
   } catch (e: any) {
     if (btn) { btn.disabled = false; btn.textContent = 'Approve & Register' }
     statusEl.innerHTML = `<div class="status error">${readableError(e)}</div>`
