@@ -11,8 +11,8 @@ export const CONTRACTS_LOCAL = {
   CAMPAIGN:    '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
 }
 
-// Active deployment — switch to CONTRACTS_ARB_SEPOLIA for testnet
-export const CONTRACTS = CONTRACTS_LOCAL
+// Active deployment
+export const CONTRACTS = CONTRACTS_ARB_SEPOLIA
 
 // Local Hardhat chain config
 export const CHAIN_CONFIG_LOCAL = {
@@ -33,4 +33,4 @@ export const CHAIN_CONFIG_ARB_SEPOLIA = {
 }
 
 // Active chain config
-export const CHAIN_CONFIG = CHAIN_CONFIG_LOCAL
+export const CHAIN_CONFIG = CHAIN_CONFIG_ARB_SEPOLIA
