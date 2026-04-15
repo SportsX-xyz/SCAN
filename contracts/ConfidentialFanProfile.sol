@@ -76,6 +76,39 @@ contract ConfidentialFanProfile {
         emit ProfileRegistered(fan);
     }
 
+    /// @notice Register a fan profile with plaintext values (admin only, for demo / club-side UI).
+    ///         Values are trivially encrypted on-chain via FHE.asEuint32.
+    ///         In production, replace with client-side encryption using the cofhe SDK.
+    function adminRegisterPlain(
+        address fan,
+        uint32 spendPlain,
+        uint32 attendancePlain,
+        uint32 loyaltyPlain
+    ) external onlyAdmin {
+        require(!profiles[fan].exists, "Profile already exists");
+
+        euint32 encSpend      = FHE.asEuint32(spendPlain);
+        euint32 encAttendance = FHE.asEuint32(attendancePlain);
+        euint32 encLoyalty    = FHE.asEuint32(loyaltyPlain);
+
+        FHE.allowThis(encSpend);
+        FHE.allowThis(encAttendance);
+        FHE.allowThis(encLoyalty);
+        FHE.allow(encSpend, fan);
+        FHE.allow(encAttendance, fan);
+        FHE.allow(encLoyalty, fan);
+
+        profiles[fan] = EncryptedProfile({
+            totalSpend: encSpend,
+            matchAttendance: encAttendance,
+            loyaltyYears: encLoyalty,
+            exists: true
+        });
+
+        fanList.push(fan);
+        emit ProfileRegistered(fan);
+    }
+
     /// @notice Update an existing fan's encrypted profile
     function updateProfile(
         address fan,

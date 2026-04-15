@@ -5,6 +5,11 @@
         "internalType": "address",
         "name": "_fanProfiles",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_protocolTreasury",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -20,6 +25,50 @@
     ],
     "name": "SecurityZoneOutOfBounds",
     "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "AdClicked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "costPerImpression",
+        "type": "uint256"
+      }
+    ],
+    "name": "AdViewConfirmed",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -56,10 +105,28 @@
         "type": "address"
       },
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "clubAddress",
+        "type": "address"
+      },
+      {
         "indexed": false,
         "internalType": "string",
         "name": "name",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum SCANCampaign.AdType",
+        "name": "adType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "costPerImpression",
+        "type": "uint256"
       }
     ],
     "name": "CampaignCreated",
@@ -95,13 +162,98 @@
       },
       {
         "indexed": false,
+        "internalType": "bool",
+        "name": "matched",
+        "type": "bool"
+      }
+    ],
+    "name": "MatchResultPublished",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "uint256",
-        "name": "amount",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "clubAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "fanAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "protocolAmount",
         "type": "uint256"
       }
     ],
-    "name": "RewardClaimed",
+    "name": "RewardSettled",
     "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "adClicked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "adViewed",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [
@@ -155,28 +307,43 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "clubAddress",
+        "type": "address"
+      },
+      {
         "internalType": "string",
         "name": "name",
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "adContentURI",
+        "type": "string"
+      },
+      {
+        "internalType": "enum SCANCampaign.AdType",
+        "name": "adType",
+        "type": "uint8"
+      },
+      {
         "internalType": "euint32",
         "name": "minSpend",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "euint32",
         "name": "minAttendance",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "euint32",
         "name": "minLoyalty",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "uint256",
-        "name": "rewardPerFan",
+        "name": "costPerImpression",
         "type": "uint256"
       },
       {
@@ -192,6 +359,16 @@
       {
         "internalType": "uint256",
         "name": "matchCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "impressionCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "clickCount",
         "type": "uint256"
       },
       {
@@ -211,7 +388,7 @@
         "type": "uint256"
       }
     ],
-    "name": "claimReward",
+    "name": "confirmView",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -222,6 +399,21 @@
         "internalType": "string",
         "name": "name",
         "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "adContentURI",
+        "type": "string"
+      },
+      {
+        "internalType": "enum SCANCampaign.AdType",
+        "name": "adType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "clubAddress",
+        "type": "address"
       },
       {
         "internalType": "uint32",
@@ -240,7 +432,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "rewardPerFan",
+        "name": "costPerImpression",
         "type": "uint256"
       }
     ],
@@ -297,13 +489,28 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "clubAddress",
+        "type": "address"
+      },
+      {
         "internalType": "string",
         "name": "name",
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "adContentURI",
+        "type": "string"
+      },
+      {
+        "internalType": "enum SCANCampaign.AdType",
+        "name": "adType",
+        "type": "uint8"
+      },
+      {
         "internalType": "uint256",
-        "name": "rewardPerFan",
+        "name": "costPerImpression",
         "type": "uint256"
       },
       {
@@ -322,8 +529,66 @@
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "impressionCount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "clickCount",
+        "type": "uint256"
+      },
+      {
         "internalType": "bool",
         "name": "active",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      }
+    ],
+    "name": "getMatchResultCtHash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "isMatched",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
         "type": "bool"
       }
     ],
@@ -355,6 +620,30 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "matchConfirmed",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "nextCampaignId",
     "outputs": [
@@ -368,6 +657,42 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "protocolTreasury",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "campaignId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "result",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "publishMatchResult",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -375,7 +700,7 @@
         "type": "uint256"
       }
     ],
-    "name": "requestMatchResult",
+    "name": "recordClick",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

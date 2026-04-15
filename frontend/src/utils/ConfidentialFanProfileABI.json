@@ -21,6 +21,17 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "int32",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "name": "SecurityZoneOutOfBounds",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -57,6 +68,34 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "fan",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "spendPlain",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "attendancePlain",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "loyaltyPlain",
+        "type": "uint32"
+      }
+    ],
+    "name": "adminRegisterPlain",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -141,17 +180,17 @@
       {
         "internalType": "euint32",
         "name": "totalSpend",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "euint32",
         "name": "matchAttendance",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "euint32",
         "name": "loyaltyYears",
-        "type": "uint256"
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",

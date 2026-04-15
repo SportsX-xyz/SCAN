@@ -27,6 +27,7 @@ contract SCANCampaign {
         uint256 remainingBudget;   // Remaining budget
         uint256 matchCount;        // Fans confirmed as matched (after on-chain decryption)
         uint256 impressionCount;   // Verified ad views (ProofOfView confirmed)
+        uint256 clickCount;        // Fans who clicked through to the ad content
         bool    active;
     }
 
@@ -60,6 +61,9 @@ contract SCANCampaign {
     /// @notice Campaign ID => Fan address => impression reward has been settled
     mapping(uint256 => mapping(address => bool)) public rewardClaimed;
 
+    /// @notice Campaign ID => Fan address => fan clicked through to the ad content
+    mapping(uint256 => mapping(address => bool)) public adClicked;
+
     event CampaignCreated(
         uint256 indexed campaignId,
         address indexed sponsor,
@@ -78,6 +82,7 @@ contract SCANCampaign {
         uint256 fanAmount,
         uint256 protocolAmount
     );
+    event AdClicked(uint256 indexed campaignId, address indexed fan);
     event CampaignDeactivated(uint256 indexed campaignId);
 
     constructor(address _fanProfiles, address _protocolTreasury) {
@@ -138,6 +143,7 @@ contract SCANCampaign {
             remainingBudget: msg.value,
             matchCount: 0,
             impressionCount: 0,
+            clickCount: 0,
             active: true
         });
 
@@ -269,6 +275,21 @@ contract SCANCampaign {
         emit RewardSettled(campaignId, msg.sender, clubAmount, fanAmount, protocolAmount);
     }
 
+    // ─── Click Tracking ──────────────────────────────────────────────────────
+
+    /// @notice Fan records that they clicked through to the ad content.
+    ///         Can only be called by a matched fan. Idempotent — clicking twice is a no-op.
+    ///         Sponsors see aggregate clickCount only; no individual identity is exposed.
+    function recordClick(uint256 campaignId) external {
+        require(matchConfirmed[campaignId][msg.sender], "Match result not published yet");
+        require(isMatched[campaignId][msg.sender], "Not matched for this campaign");
+        if (!adClicked[campaignId][msg.sender]) {
+            adClicked[campaignId][msg.sender] = true;
+            campaigns[campaignId].clickCount++;
+            emit AdClicked(campaignId, msg.sender);
+        }
+    }
+
     // ─── Sponsor Actions ─────────────────────────────────────────────────────
 
     /// @notice Sponsor deactivates campaign and withdraws remaining budget
@@ -303,6 +324,7 @@ contract SCANCampaign {
         uint256 remainingBudget,
         uint256 matchCount,
         uint256 impressionCount,
+        uint256 clickCount,
         bool active
     ) {
         Campaign storage c = campaigns[campaignId];
@@ -317,6 +339,7 @@ contract SCANCampaign {
             c.remainingBudget,
             c.matchCount,
             c.impressionCount,
+            c.clickCount,
             c.active
         );
     }

@@ -21,10 +21,10 @@ task('deploy-scan', 'Deploy the SCAN protocol contracts').setAction(async (_, hr
 	console.log(`ConfidentialFanProfile: ${fanProfileAddr}`)
 	saveDeployment(network.name, 'ConfidentialFanProfile', fanProfileAddr)
 
-	// 2. Deploy SCANCampaign
+	// 2. Deploy SCANCampaign (deployer also acts as protocol treasury for demo)
 	console.log('\nDeploying SCANCampaign...')
 	const Campaign = await ethers.getContractFactory('SCANCampaign')
-	const campaign = await Campaign.deploy(fanProfileAddr)
+	const campaign = await Campaign.deploy(fanProfileAddr, deployer.address)
 	await campaign.waitForDeployment()
 	const campaignAddr = await campaign.getAddress()
 	console.log(`SCANCampaign: ${campaignAddr}`)
