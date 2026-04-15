@@ -953,7 +953,7 @@ async function registerFan() {
         Encryptable.uint32(BigInt(attendance)),
         Encryptable.uint32(BigInt(loyalty)),
       ])
-      .setAccount(fanAddr)
+      .setAccount(await signer!.getAddress())
       .execute()
 
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
@@ -994,7 +994,7 @@ async function approveApplication(fanAddr: string, spend: number, attendance: nu
         Encryptable.uint32(BigInt(attendance)),
         Encryptable.uint32(BigInt(loyalty)),
       ])
-      .setAccount(fanAddr)
+      .setAccount(await signer!.getAddress())
       .execute()
 
     statusEl.innerHTML = `<div class="status info">Step 3/3: Submitting encrypted profile on-chain...</div>`
