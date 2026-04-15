@@ -960,9 +960,26 @@ async function registerFan() {
       .setAccount(await signer!.getAddress())
       .execute()
 
+    console.log('[SCAN] encSpend:', JSON.stringify(encSpend, (_, v) => typeof v === 'bigint' ? v.toString() : v))
+    console.log('[SCAN] encAttendance:', JSON.stringify(encAttendance, (_, v) => typeof v === 'bigint' ? v.toString() : v))
+    console.log('[SCAN] encLoyalty:', JSON.stringify(encLoyalty, (_, v) => typeof v === 'bigint' ? v.toString() : v))
+
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
     statusEl.innerHTML = '<div class="status info">Step 3/3: Check MetaMask and press <strong>Confirm</strong> to submit on-chain...</div>'
-    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty)
+
+    // Estimate gas first to catch revert before MetaMask prompt
+    let gasLimit: bigint
+    try {
+      gasLimit = await contract.registerProfile.estimateGas(fanAddr, encSpend, encAttendance, encLoyalty)
+      console.log('[SCAN] estimateGas OK:', gasLimit.toString())
+      gasLimit = gasLimit * 130n / 100n  // 30% buffer
+    } catch (gasErr: any) {
+      console.error('[SCAN] estimateGas FAILED:', gasErr)
+      statusEl.innerHTML = `<div class="status error">Contract error: ${readableError(gasErr)}</div>`
+      return
+    }
+
+    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty, { gasLimit })
     await tx.wait()
     statusEl.innerHTML = `
       <div class="status success">
@@ -970,9 +987,9 @@ async function registerFan() {
         <small>${fanAddr.slice(0,8)}...${fanAddr.slice(-6)} — metrics FHE-encrypted on-chain via CoFHE</small>
       </div>
     `
-    // Refresh fan list
     await loadClubData()
   } catch (e: any) {
+    console.error('[SCAN] registerFan error:', e)
     statusEl.innerHTML = `<div class="status error">${readableError(e)}</div>`
   }
 }
@@ -1001,9 +1018,23 @@ async function approveApplication(fanAddr: string, spend: number, attendance: nu
       .setAccount(await signer!.getAddress())
       .execute()
 
-    statusEl.innerHTML = `<div class="status info">Step 3/3: Submitting encrypted profile on-chain...</div>`
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
-    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty)
+
+    // Estimate gas first to catch contract revert before MetaMask prompt
+    let gasLimit: bigint
+    try {
+      gasLimit = await contract.registerProfile.estimateGas(fanAddr, encSpend, encAttendance, encLoyalty)
+      console.log('[SCAN] estimateGas OK:', gasLimit.toString())
+      gasLimit = gasLimit * 130n / 100n
+    } catch (gasErr: any) {
+      console.error('[SCAN] estimateGas FAILED:', gasErr)
+      if (btn) { btn.disabled = false; btn.textContent = 'Approve & Register' }
+      statusEl.innerHTML = `<div class="status error">Contract error: ${readableError(gasErr)}</div>`
+      return
+    }
+
+    statusEl.innerHTML = `<div class="status info">Step 3/3: Check MetaMask and press <strong>Confirm</strong> to submit on-chain...</div>`
+    const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty, { gasLimit })
     await tx.wait()
 
     removePendingApplication(fanAddr)
