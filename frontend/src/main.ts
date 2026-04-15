@@ -121,6 +121,10 @@ function esc(str: string): string {
 }
 
 function readableError(e: any): string {
+  // EIP-1193 user rejection (code 4001)
+  if (e?.code === 4001 || e?.code === 'ACTION_REJECTED' || e?.reason === 'rejected') {
+    return 'Transaction cancelled. Open MetaMask and press Confirm to approve.'
+  }
   const msg = e?.reason || e?.shortMessage || e?.message || String(e)
   const match = msg.match(/reason="([^"]+)"/) || msg.match(/reverted with reason string '([^']+)'/)
   return match ? match[1] : msg.length > 200 ? msg.slice(0, 200) + '...' : msg
@@ -957,7 +961,7 @@ async function registerFan() {
       .execute()
 
     const contract = new ethers.Contract(CONTRACTS.FAN_PROFILE, FanProfileABI, signer!)
-    statusEl.innerHTML = '<div class="status info">Step 3/3: Submitting encrypted profile on-chain...</div>'
+    statusEl.innerHTML = '<div class="status info">Step 3/3: Check MetaMask and press <strong>Confirm</strong> to submit on-chain...</div>'
     const tx = await contract.registerProfile(fanAddr, encSpend, encAttendance, encLoyalty)
     await tx.wait()
     statusEl.innerHTML = `
