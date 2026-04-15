@@ -277,8 +277,10 @@ function renderAbout(): string {
     <div class="card">
       <h2>Privacy-First Sports Advertising</h2>
       <p>
-        SCAN enables sponsors to target fan segments based on spending, loyalty, and behavior
-        — without ever seeing the raw data. Powered by Fully Homomorphic Encryption (FHE) on Fhenix.
+        SCAN enables sponsors to target fan segments based on spending, loyalty, and behaviour
+        — without ever seeing the raw data. Fan metrics are encrypted client-side using
+        Fully Homomorphic Encryption (FHE) via the Fhenix CoFHE coprocessor on Arbitrum Sepolia.
+        Matching happens entirely on encrypted data; no plaintext ever leaves the fan's device.
       </p>
       <div class="fhe-badge">FHE ENCRYPTED &middot; Data stays invisible</div>
     </div>
@@ -306,15 +308,55 @@ function renderAbout(): string {
     </div>
 
     <div class="card">
-      <h2>Ad Delivery Flow</h2>
-      <p style="margin-bottom: 16px; line-height: 1.8;">
-        <strong>1.</strong> Sponsor uploads ad to IPFS, stores URI + targeting criteria on-chain<br>
-        <strong>2.</strong> Club admin runs blind FHE match for all fans — nobody learns who matched<br>
-        <strong>3.</strong> Fan opens their <em>Ad Inbox</em> — matched campaigns appear as cards<br>
-        <strong>4.</strong> Fan decrypts their result via Fhenix coprocessor, publishes proof on-chain<br>
-        <strong>5.</strong> Ad content (video / banner / link) is rendered inline from IPFS<br>
-        <strong>6.</strong> Fan clicks through + confirms view → 3-way settlement fires instantly<br>
-        <strong>7.</strong> Sponsor sees delivery rate &amp; CTR — no individual identity exposed
+      <h2>Step-by-Step: Fan</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">
+        Tab: <strong>My Ad Inbox</strong>
+      </p>
+      <p style="line-height: 2;">
+        <strong>1.</strong> Connect your wallet (MetaMask — scan QR or use browser extension). Make sure you are on <strong>Arbitrum Sepolia</strong>.<br>
+        <strong>2.</strong> Scroll to <em>Sync Your Fan Profile</em>. Enter your Total Spend (USD), Match Attendance count, and Loyalty Years.<br>
+        <strong>3.</strong> Click <strong>Encrypt &amp; Submit Profile</strong>. Your three metrics are encrypted client-side by the Fhenix CoFHE SDK before any data leaves your device. Confirm the transaction in MetaMask.<br>
+        <strong>4.</strong> Your encrypted profile is queued for the club admin to approve. Wait for approval (the club admin runs the on-chain registration).<br>
+        <strong>5.</strong> Once registered, the club admin will run a blind FHE match for active campaigns. When a match is computed for you, it appears in your <em>Ad Inbox</em> — click <strong>Refresh</strong> to check.<br>
+        <strong>6.</strong> In the inbox card, click <strong>Decrypt Match Result</strong>. The Fhenix coprocessor decrypts your encrypted boolean result and returns a verifiable signature. Click <strong>Publish Result On-Chain</strong> to record it.<br>
+        <strong>7.</strong> If matched, the ad content loads inline. Watch the video / view the banner / open the link, then click <strong>Confirm View &amp; Claim Reward</strong>.<br>
+        <strong>8.</strong> The smart contract instantly settles: <strong>30% of the impression fee goes to your wallet</strong>, 60% to the club, 10% to the protocol.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Step-by-Step: Club Admin</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">
+        Tab: <strong>Club Admin</strong> &mdash; requires the deployer wallet (admin address)
+      </p>
+      <p style="line-height: 2;">
+        <strong>1.</strong> Connect the admin wallet and switch to <strong>Club Admin</strong> tab. Fan profile applications submitted by fans appear in the <em>Pending Applications</em> list.<br>
+        <strong>2.</strong> Review each application. Click <strong>Approve &amp; Register</strong> to encrypt the fan's metrics client-side (via CoFHE SDK) and register them on-chain. Confirm the MetaMask transaction.<br>
+        <strong>3.</strong> When a sponsor creates a campaign, note the <strong>Campaign ID</strong> (visible in the Sponsor tab after creation, or via Campaign Analytics).<br>
+        <strong>4.</strong> Under <em>Campaign Operations</em>, enter the Campaign ID and click <strong>Grant Campaign Access</strong>. This authorises the campaign contract to read each fan's encrypted profile — required before matching.<br>
+        <strong>5.</strong> Enter the same Campaign ID under <em>Run Blind Match</em>. Leave the fan address blank to match all registered fans at once (batch), or enter a single address. Click <strong>Run Blind Match</strong>. The FHE comparison runs entirely on encrypted data — nobody, including the admin, learns who matched.<br>
+        <strong>6.</strong> Fans can now see the campaign in their Ad Inbox and complete the decrypt + view flow.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Step-by-Step: Sponsor</h2>
+      <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">
+        Tab: <strong>Sponsor</strong>
+      </p>
+      <p style="line-height: 2;">
+        <strong>1.</strong> Connect your wallet and go to the <strong>Sponsor</strong> tab.<br>
+        <strong>2.</strong> Fill in the campaign form:<br>
+        &nbsp;&nbsp;• <em>Campaign Name</em> — display name fans will see<br>
+        &nbsp;&nbsp;• <em>Ad Content URI</em> — IPFS or Arweave URI for your video, banner image, or link<br>
+        &nbsp;&nbsp;• <em>Ad Type</em> — Video, Banner, or Link<br>
+        &nbsp;&nbsp;• <em>Club Address</em> — wallet of the sports club receiving 60% of impressions<br>
+        &nbsp;&nbsp;• <em>Targeting Thresholds</em> — minimum Spend (USD), Attendance, and Loyalty Years. Fans below any threshold are excluded. These values are encrypted client-side via CoFHE before being stored on-chain.<br>
+        &nbsp;&nbsp;• <em>Cost Per Impression</em> — ETH paid per verified ad view (e.g. 0.0001)<br>
+        &nbsp;&nbsp;• <em>Total Budget</em> — ETH deposited into the contract (must cover at least one impression)<br>
+        <strong>3.</strong> Click <strong>Create Campaign &amp; Deposit Budget</strong>. Your thresholds are encrypted by the CoFHE SDK, then you confirm two MetaMask steps (encrypt + deploy). Note the <strong>Campaign ID</strong> shown on success.<br>
+        <strong>4.</strong> Share the Campaign ID with the club admin so they can run Grant Access + Blind Match.<br>
+        <strong>5.</strong> Track delivery in <em>Campaign Analytics</em>: enter the Campaign ID to see match count, impression count, click-through rate, and remaining budget. No individual fan identity is ever revealed.
       </p>
     </div>
 
